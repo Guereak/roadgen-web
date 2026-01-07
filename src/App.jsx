@@ -10,7 +10,6 @@ function App() {
     roads: 7,
     buildings: 12
   })
-  const [fillBuildings, setFillBuildings] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [theme, setTheme] = useState('light')
   const canvasRef = useRef(null)
@@ -74,14 +73,12 @@ function App() {
         currentClass={currentClass}
         currentTool={currentTool}
         brushSize={brushSizes[currentClass]}
-        fillBuildings={fillBuildings}
         zoom={zoom}
         theme={theme}
         classColors={classColors}
         onClassChange={setCurrentClass}
         onToolChange={setCurrentTool}
         onBrushSizeChange={handleBrushSizeChange}
-        onFillBuildingsChange={setFillBuildings}
         onZoomChange={setZoom}
         onThemeChange={setTheme}
         onUndo={handleUndo}
@@ -96,7 +93,6 @@ function App() {
         currentClass={currentClass}
         currentTool={currentTool}
         brushSize={brushSizes[currentClass]}
-        fillBuildings={fillBuildings}
         zoom={zoom}
         theme={theme}
         classColors={classColors}

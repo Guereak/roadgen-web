@@ -43,7 +43,7 @@
   left: 20px;
   top: 20px;
   bottom: 20px;
-  width: 280px;
+  width: 200px;
   background: var(--sidebar-bg);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
@@ -58,7 +58,7 @@
 }
 
 .toolbar-header {
-  padding: 24px 20px 20px;
+  padding: 16px 16px 14px;
   border-bottom: 0.5px solid var(--sidebar-divider);
   display: flex;
   justify-content: space-between;
@@ -66,9 +66,9 @@
 }
 
 .toolbar-header h1 {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
   margin: 0;
   color: var(--sidebar-text);
   text-align: left;
@@ -76,8 +76,8 @@
 }
 
 .theme-toggle {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--control-bg);
   border: 1px solid var(--control-border);
@@ -98,7 +98,7 @@
 
 .toolbar-content {
   flex: 1;
-  padding: 20px;
+  padding: 16px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -122,7 +122,7 @@
 }
 
 .toolbar-footer {
-  padding: 16px 20px 20px;
+  padding: 12px 16px 16px;
   border-top: 0.5px solid var(--sidebar-divider);
   transition: border-color 0.3s ease;
 }
@@ -130,8 +130,8 @@
 .control-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 18px;
 }
 
 .control-group label {
@@ -143,10 +143,15 @@
   transition: color 0.3s ease;
 }
 
-.button-group,
-.tool-group {
+.button-group {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+
+.tool-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
@@ -214,12 +219,15 @@ button:active {
   border: 1px solid var(--control-border);
   text-align: center;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tool-btn:hover {
   background: var(--control-hover-bg);
   border-color: var(--control-hover-border);
-  transform: translateX(0);
   transform: scale(1.02);
 }
 
@@ -287,10 +295,10 @@ input[type="range"]::-moz-range-thumb:hover {
 }
 
 .brush-preview {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border: 1px solid var(--control-border);
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -337,13 +345,13 @@ input[type="range"]::-moz-range-thumb:hover {
 .divider {
   height: 0.5px;
   background: var(--sidebar-divider);
-  margin: 16px 0 24px;
+  margin: 12px 0 18px;
   transition: background 0.3s ease;
 }
 
 .action-buttons {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
@@ -354,12 +362,14 @@ input[type="range"]::-moz-range-thumb:hover {
   text-align: center;
   padding: 10px;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-btn:hover {
   background: var(--control-hover-bg);
   border-color: var(--control-hover-border);
-  transform: translateX(0);
   transform: scale(1.02);
 }
 
@@ -374,7 +384,7 @@ input[type="range"]::-moz-range-thumb:hover {
 
 .export-btn {
   width: 100%;
-  padding: 12px;
+  padding: 11px;
   background: #007aff;
   color: #fff;
   border: none;
@@ -385,6 +395,10 @@ input[type="range"]::-moz-range-thumb:hover {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .export-btn:hover {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, forwardRef, useImperativeHandle, useState, useCallback } from 'react'
 import './Canvas.css'
 
-const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings, zoom, theme, classColors }, ref) => {
+const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, classColors }, ref) => {
   const canvasRef = useRef(null)
   const gridCanvasRef = useRef(null)
   const containerRef = useRef(null)
@@ -9,7 +9,6 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
   const isPanning = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
   const lastDrawPos = useRef({ x: 0, y: 0 })
-  const strokePoints = useRef([])
 
   const CANVAS_SIZE = 8192
   const CENTER_OFFSET = CANVAS_SIZE / 2
@@ -186,69 +185,6 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     }
   }, [history, historyIndex])
 
-  const floodFill = useCallback((startX, startY, fillColor) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    const imageData = ctx.getImageData(0, 0, canvasSize, canvasSize)
-    const pixels = imageData.data
-
-    const startPos = (Math.floor(startY) * canvasSize + Math.floor(startX)) * 4
-    const startR = pixels[startPos]
-    const startG = pixels[startPos + 1]
-    const startB = pixels[startPos + 2]
-    const startA = pixels[startPos + 3]
-
-    // Helper function to check if a pixel is "empty" (transparent or grid)
-    const isEmptyPixel = (r, g, b, a) => {
-      // Roads are (255, 0, 0), Buildings are (0, 255, 0)
-      // Empty is transparent or very close to transparent
-      return a < 50
-    }
-
-    // If starting pixel is not empty, don't fill
-    if (!isEmptyPixel(startR, startG, startB, startA)) {
-      return
-    }
-
-    const stack = [[Math.floor(startX), Math.floor(startY)]]
-    const visited = new Set()
-
-    while (stack.length > 0) {
-      const [x, y] = stack.pop()
-
-      if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) continue
-
-      const key = `${x},${y}`
-      if (visited.has(key)) continue
-      visited.add(key)
-
-      const pos = (y * canvasSize + x) * 4
-      const r = pixels[pos]
-      const g = pixels[pos + 1]
-      const b = pixels[pos + 2]
-      const a = pixels[pos + 3]
-
-      // Only fill if this pixel is empty (not a road or building)
-      if (!isEmptyPixel(r, g, b, a)) continue
-
-      // Fill this pixel
-      pixels[pos] = fillColor.r
-      pixels[pos + 1] = fillColor.g
-      pixels[pos + 2] = fillColor.b
-      pixels[pos + 3] = 255
-
-      // Add neighbors to stack
-      stack.push([x + 1, y])
-      stack.push([x - 1, y])
-      stack.push([x, y + 1])
-      stack.push([x, y - 1])
-    }
-
-    ctx.putImageData(imageData, 0, 0)
-  }, [canvasSize])
-
   useImperativeHandle(ref, () => ({
     clear: () => {
       const canvas = canvasRef.current
@@ -326,9 +262,6 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     // Convert screen coordinates to canvas coordinates
     const x = (clientX - rect.left) / zoom
     const y = (clientY - rect.top) / zoom
-
-    // Track points for flood fill detection
-    strokePoints.current.push({ x, y })
 
     const ctx = canvas.getContext('2d')
 
@@ -429,7 +362,6 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
       e.preventDefault()
     } else {
       isDrawing.current = true
-      strokePoints.current = []
       draw(e.clientX, e.clientY, true)
     }
   }
@@ -446,44 +378,13 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
   }
 
   const handleMouseUp = () => {
-    // Check for closed loop and fill if conditions are met
-    if (isDrawing.current && fillBuildings && currentClass === 'buildings' && currentTool === 'brush') {
-      const points = strokePoints.current
-      if (points.length > 10) {
-        const firstPoint = points[0]
-        const lastPoint = points[points.length - 1]
-        const distance = Math.sqrt(
-          (lastPoint.x - firstPoint.x) ** 2 + (lastPoint.y - firstPoint.y) ** 2
-        )
-
-        // If the stroke forms a closed loop (ends near where it started)
-        if (distance < brushSize * 2) {
-          // Calculate center point of the stroke to use as fill start point
-          const centerX = points.reduce((sum, p) => sum + p.x, 0) / points.length
-          const centerY = points.reduce((sum, p) => sum + p.y, 0) / points.length
-
-          // Perform flood fill from the center
-          const fillColor = classColors.buildings
-          setTimeout(() => {
-            floodFill(centerX, centerY, fillColor)
-            saveState()
-          }, 50)
-        } else {
-          // No fill, just save the drawing
-          saveState()
-        }
-      } else {
-        // Stroke too short for fill
-        saveState()
-      }
-    } else if (isDrawing.current) {
+    if (isDrawing.current) {
       // Save state after any drawing operation
       saveState()
     }
 
     isDrawing.current = false
     isPanning.current = false
-    strokePoints.current = []
   }
 
   const handleWheel = (e) => {
@@ -525,9 +426,6 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
       />
-      <div className="canvas-info">
-        Zoom: {Math.round(zoom * 100)}% • Trackpad to pan • Use zoom slider to zoom (50-300%)
-      </div>
     </div>
   )
 })

@@ -1,17 +1,16 @@
 import './Toolbar.css'
+import { LuPencil, LuEraser, LuUndo2, LuRedo2, LuFocus, LuTrash2, LuDownload, LuMoon, LuSun } from 'react-icons/lu'
 
 function Toolbar({
   currentClass,
   currentTool,
   brushSize,
-  fillBuildings,
   zoom,
   theme,
   classColors,
   onClassChange,
   onToolChange,
   onBrushSizeChange,
-  onFillBuildingsChange,
   onZoomChange,
   onThemeChange,
   onUndo,
@@ -39,7 +38,7 @@ function Toolbar({
           onClick={() => onThemeChange(theme === 'light' ? 'dark' : 'light')}
           title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
-          {theme === 'light' ? '🌙' : '☀️'}
+          {theme === 'light' ? <LuMoon size={18} /> : <LuSun size={18} color='lightyellow'/>}
         </button>
       </div>
 
@@ -70,14 +69,16 @@ function Toolbar({
             <button
               className={`tool-btn ${currentTool === 'brush' ? 'active' : ''}`}
               onClick={() => onToolChange('brush')}
+              title="Brush"
             >
-              Brush
+              <LuPencil size={18} />
             </button>
             <button
               className={`tool-btn ${currentTool === 'eraser' ? 'active' : ''}`}
               onClick={() => onToolChange('eraser')}
+              title="Eraser"
             >
-              Eraser
+              <LuEraser size={18} />
             </button>
           </div>
         </div>
@@ -126,36 +127,22 @@ function Toolbar({
           </div>
         </div>
 
-        <div className="control-group">
-          <label>Options</label>
-          <div className="checkbox-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={fillBuildings}
-                onChange={(e) => onFillBuildingsChange(e.target.checked)}
-              />
-              <span>Fill Buildings</span>
-            </label>
-          </div>
-        </div>
-
         <div className="divider"></div>
 
         <div className="control-group">
           <label>Actions</label>
           <div className="action-buttons">
             <button className="action-btn" onClick={onUndo} title="Undo (⌘Z)">
-              Undo
+              <LuUndo2 size={18} />
             </button>
             <button className="action-btn" onClick={onRedo} title="Redo (⌘⇧Z)">
-              Redo
+              <LuRedo2 size={18} />
             </button>
-            <button className="action-btn" onClick={onResetView}>
-              Reset View
+            <button className="action-btn" onClick={onResetView} title="Reset View">
+              <LuFocus size={18} />
             </button>
-            <button className="action-btn danger" onClick={onClear}>
-              Clear
+            <button className="action-btn danger" onClick={onClear} title="Clear Canvas">
+              <LuTrash2 size={18} />
             </button>
           </div>
         </div>
@@ -163,7 +150,7 @@ function Toolbar({
 
       <div className="toolbar-footer">
         <button className="export-btn" onClick={onSave}>
-          Export Mask
+          <LuDownload size={18} /> Export
         </button>
       </div>
     </div>
