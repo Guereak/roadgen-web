@@ -27,6 +27,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
   const [offset, setOffset] = useState(getInitialOffset())
   const [bounds, setBounds] = useState({ minX: CANVAS_SIZE, minY: CANVAS_SIZE, maxX: 0, maxY: 0 })
   const [canvasSize] = useState(CANVAS_SIZE)
+  const prevZoomRef = useRef(zoom)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -66,6 +67,31 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
   useEffect(() => {
     drawGrid()
   }, [drawGrid])
+
+  // Adjust offset when zoom changes to keep the center of viewport fixed
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const prevZoom = prevZoomRef.current
+    if (prevZoom === zoom) return
+
+    const rect = container.getBoundingClientRect()
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+
+    // Calculate what canvas point is currently at the center
+    const canvasX = (centerX - offset.x) / prevZoom
+    const canvasY = (centerY - offset.y) / prevZoom
+
+    // Adjust offset so the same canvas point remains at the center with new zoom
+    setOffset({
+      x: centerX - canvasX * zoom,
+      y: centerY - canvasY * zoom
+    })
+
+    prevZoomRef.current = zoom
+  }, [zoom, offset.x, offset.y])
 
   const updateBounds = useCallback((x, y) => {
     setBounds(prev => ({

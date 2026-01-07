@@ -6,7 +6,7 @@ import './App.css'
 function App() {
   const [currentClass, setCurrentClass] = useState('roads')
   const [currentTool, setCurrentTool] = useState('brush')
-  const [brushSize, setBrushSize] = useState(20)
+  const [brushSize, setBrushSize] = useState(7)
   const [fillBuildings, setFillBuildings] = useState(false)
   const [zoom, setZoom] = useState(1)
   const canvasRef = useRef(null)
