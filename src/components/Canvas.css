@@ -25,12 +25,16 @@
   transition: background 0.3s ease;
 }
 
+.grid-canvas,
 .drawing-canvas {
-  cursor: crosshair;
   display: block;
   transform-origin: 0 0;
   transition: none;
   image-rendering: pixelated;
+}
+
+.drawing-canvas {
+  cursor: crosshair;
 }
 
 .canvas-info {

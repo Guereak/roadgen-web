@@ -3,6 +3,7 @@ import './Canvas.css'
 
 const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings, zoom, theme, classColors }, ref) => {
   const canvasRef = useRef(null)
+  const gridCanvasRef = useRef(null)
   const containerRef = useRef(null)
   const isDrawing = useRef(false)
   const isPanning = useRef(false)
@@ -15,7 +16,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
 
   // Helper function to get background color based on theme
   const getBgColor = () => theme === 'light' ? '#FFFFFF' : '#000000'
-  const getGridColor = () => theme === 'light' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)'
+  const getGridColor = () => theme === 'light' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.1)'
 
   // Center the view initially
   const getInitialOffset = () => {
@@ -35,71 +36,15 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
   const [history, setHistory] = useState([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
-  // Initialize canvas only once
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-
-    // Disable anti-aliasing for solid colors
-    ctx.imageSmoothingEnabled = false
-
-    ctx.fillStyle = getBgColor()
-    ctx.fillRect(0, 0, canvasSize, canvasSize)
-    drawGrid()
-
-    // Save initial state
-    const imageData = ctx.getImageData(0, 0, canvasSize, canvasSize)
-    setHistory([imageData])
-    setHistoryIndex(0)
-  }, [canvasSize])
-
-  // Handle theme changes - preserve drawn content, only change background
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    // Skip on initial mount
-    if (history.length === 0) return
-
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    const imageData = ctx.getImageData(0, 0, canvasSize, canvasSize)
-    const pixels = imageData.data
-
-    const newBgColor = theme === 'light' ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 }
-
-    // Replace only background pixels, preserve roads and buildings
-    for (let i = 0; i < pixels.length; i += 4) {
-      const r = pixels[i]
-      const g = pixels[i + 1]
-      const b = pixels[i + 2]
-
-      // Check if this is a background pixel (close to old background color)
-      const isBackground = theme === 'light'
-        ? (r < 50 && g < 50 && b < 50)  // Was dark, changing to light
-        : (r > 200 && g > 200 && b > 200)  // Was light, changing to dark
-
-      if (isBackground) {
-        pixels[i] = newBgColor.r
-        pixels[i + 1] = newBgColor.g
-        pixels[i + 2] = newBgColor.b
-      }
-    }
-
-    ctx.putImageData(imageData, 0, 0)
-    drawGrid()
-
-    // Update history with the theme-changed state
-    saveState()
-  }, [theme])
-
   const drawGrid = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const gridCanvas = gridCanvasRef.current
+    if (!gridCanvas) return
 
-    const ctx = canvas.getContext('2d')
+    const ctx = gridCanvas.getContext('2d')
     const gridSize = 64
+
+    // Clear the grid canvas
+    ctx.clearRect(0, 0, canvasSize, canvasSize)
 
     ctx.strokeStyle = getGridColor()
     ctx.lineWidth = 1
@@ -119,9 +64,41 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     }
   }, [canvasSize, theme])
 
+  // Initialize grid canvas
+  useEffect(() => {
+    const gridCanvas = gridCanvasRef.current
+    if (!gridCanvas) return
+
+    const ctx = gridCanvas.getContext('2d')
+    ctx.imageSmoothingEnabled = false
+
+    // Draw initial grid
+    drawGrid()
+  }, [canvasSize, drawGrid])
+
+  // Initialize drawing canvas only once with transparent background
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+
+    // Disable anti-aliasing for solid colors
+    ctx.imageSmoothingEnabled = false
+
+    // Clear to transparent - no grid on this canvas
+    ctx.clearRect(0, 0, canvasSize, canvasSize)
+
+    // Save initial state
+    const imageData = ctx.getImageData(0, 0, canvasSize, canvasSize)
+    setHistory([imageData])
+    setHistoryIndex(0)
+  }, [canvasSize])
+
+  // Redraw grid when theme changes
   useEffect(() => {
     drawGrid()
-  }, [drawGrid])
+  }, [theme, drawGrid])
 
   // Adjust offset when zoom changes to keep the center of viewport fixed
   useEffect(() => {
@@ -221,22 +198,17 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     const startR = pixels[startPos]
     const startG = pixels[startPos + 1]
     const startB = pixels[startPos + 2]
+    const startA = pixels[startPos + 3]
 
-    // Helper function to check if a pixel is "empty" (background color, ignoring grid)
-    const isEmptyPixel = (r, g, b) => {
+    // Helper function to check if a pixel is "empty" (transparent or grid)
+    const isEmptyPixel = (r, g, b, a) => {
       // Roads are (255, 0, 0), Buildings are (0, 255, 0)
-      // Empty is close to background color - allowing some tolerance for grid
-      if (theme === 'light') {
-        // In light mode, empty is white or close to white
-        return r > 200 && g > 200 && b > 200
-      } else {
-        // In dark mode, empty is black or close to black
-        return r < 50 && g < 50 && b < 50
-      }
+      // Empty is transparent or very close to transparent
+      return a < 50
     }
 
     // If starting pixel is not empty, don't fill
-    if (!isEmptyPixel(startR, startG, startB)) {
+    if (!isEmptyPixel(startR, startG, startB, startA)) {
       return
     }
 
@@ -256,9 +228,10 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
       const r = pixels[pos]
       const g = pixels[pos + 1]
       const b = pixels[pos + 2]
+      const a = pixels[pos + 3]
 
       // Only fill if this pixel is empty (not a road or building)
-      if (!isEmptyPixel(r, g, b)) continue
+      if (!isEmptyPixel(r, g, b, a)) continue
 
       // Fill this pixel
       pixels[pos] = fillColor.r
@@ -274,8 +247,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     }
 
     ctx.putImageData(imageData, 0, 0)
-    drawGrid()
-  }, [canvasSize, drawGrid, theme])
+  }, [canvasSize])
 
   useImperativeHandle(ref, () => ({
     clear: () => {
@@ -283,9 +255,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
       if (!canvas) return
 
       const ctx = canvas.getContext('2d')
-      ctx.fillStyle = getBgColor()
-      ctx.fillRect(0, 0, canvasSize, canvasSize)
-      drawGrid()
+      ctx.clearRect(0, 0, canvasSize, canvasSize)
       setBounds({ minX: canvasSize, minY: canvasSize, maxX: 0, maxY: 0 })
       saveState()
     },
@@ -316,12 +286,14 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
       exportCanvas.height = height
       const exportCtx = exportCanvas.getContext('2d')
 
+      // Fill with current theme background color
       exportCtx.fillStyle = getBgColor()
       exportCtx.fillRect(0, 0, width, height)
 
       const sourceX = Math.max(0, minX - 50)
       const sourceY = Math.max(0, minY - 50)
 
+      // Draw the transparent canvas content over the background
       exportCtx.drawImage(
         canvas,
         sourceX, sourceY, width, height,
@@ -343,7 +315,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     resetView: () => {
       setOffset(getInitialOffset())
     }
-  }), [bounds, canvasSize, drawGrid, saveState, undo, redo, historyIndex, history.length])
+  }), [bounds, canvasSize, saveState, undo, redo, historyIndex, history.length])
 
   const draw = (clientX, clientY, isFirstPoint = false) => {
     const canvas = canvasRef.current
@@ -364,8 +336,11 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     ctx.imageSmoothingEnabled = false
 
     if (currentTool === 'eraser') {
-      ctx.fillStyle = getBgColor()
+      // Eraser will clear to transparent
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.fillStyle = 'rgba(0, 0, 0, 1)'
     } else {
+      ctx.globalCompositeOperation = 'source-over'
       const color = classColors[currentClass]
       ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`
     }
@@ -376,8 +351,8 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     // Helper function to draw a filled circle with solid edges using pixel manipulation
     const drawSolidCircle = (centerX, centerY, radius) => {
       const color = currentTool === 'eraser'
-        ? (theme === 'light' ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 })
-        : classColors[currentClass]
+        ? { r: 0, g: 0, b: 0, a: 0 } // Transparent for eraser
+        : { ...classColors[currentClass], a: 255 }
 
       const radiusSquared = radius * radius
       const minX = Math.max(0, Math.floor(centerX - radius))
@@ -407,7 +382,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
             pixels[index] = color.r
             pixels[index + 1] = color.g
             pixels[index + 2] = color.b
-            pixels[index + 3] = 255
+            pixels[index + 3] = color.a
           }
         }
       }
@@ -522,13 +497,25 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
   }
 
   return (
-    <div ref={containerRef} className="canvas-wrapper">
+    <div ref={containerRef} className="canvas-wrapper" style={{ backgroundColor: getBgColor() }}>
+      <canvas
+        ref={gridCanvasRef}
+        width={canvasSize}
+        height={canvasSize}
+        className="grid-canvas"
+        style={{
+          position: 'absolute',
+          transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+          pointerEvents: 'none'
+        }}
+      />
       <canvas
         ref={canvasRef}
         width={canvasSize}
         height={canvasSize}
         className="drawing-canvas"
         style={{
+          position: 'absolute',
           transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
           cursor: isPanning.current ? 'grabbing' : currentTool === 'eraser' ? 'crosshair' : 'crosshair'
         }}
