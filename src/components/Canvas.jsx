@@ -28,6 +28,8 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
   const [bounds, setBounds] = useState({ minX: CANVAS_SIZE, minY: CANVAS_SIZE, maxX: 0, maxY: 0 })
   const [canvasSize] = useState(CANVAS_SIZE)
   const prevZoomRef = useRef(zoom)
+  const [history, setHistory] = useState([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -37,6 +39,11 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, canvasSize, canvasSize)
     drawGrid()
+
+    // Save initial state
+    const imageData = ctx.getImageData(0, 0, canvasSize, canvasSize)
+    setHistory([imageData])
+    setHistoryIndex(0)
   }, [canvasSize])
 
   const drawGrid = useCallback(() => {
@@ -101,6 +108,58 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
       maxY: Math.max(prev.maxY, y + brushSize)
     }))
   }, [brushSize])
+
+  const saveState = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    const imageData = ctx.getImageData(0, 0, canvasSize, canvasSize)
+
+    setHistoryIndex(prev => {
+      const newIndex = prev + 1
+
+      setHistory(prevHistory => {
+        // Remove any future states if we're not at the end of history
+        const newHistory = prevHistory.slice(0, prev + 1)
+        // Add new state
+        newHistory.push(imageData)
+        // Limit history to 50 states to prevent memory issues
+        if (newHistory.length > 50) {
+          newHistory.shift()
+          return newHistory
+        }
+        return newHistory
+      })
+
+      // Adjust index if we hit the limit
+      return Math.min(newIndex, 49)
+    })
+  }, [canvasSize])
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const ctx = canvas.getContext('2d')
+      const prevState = history[historyIndex - 1]
+      ctx.putImageData(prevState, 0, 0)
+      setHistoryIndex(prev => prev - 1)
+    }
+  }, [history, historyIndex])
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const ctx = canvas.getContext('2d')
+      const nextState = history[historyIndex + 1]
+      ctx.putImageData(nextState, 0, 0)
+      setHistoryIndex(prev => prev + 1)
+    }
+  }, [history, historyIndex])
 
   const floodFill = useCallback((startX, startY, fillColor) => {
     const canvas = canvasRef.current
@@ -175,7 +234,16 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
       ctx.fillRect(0, 0, canvasSize, canvasSize)
       drawGrid()
       setBounds({ minX: canvasSize, minY: canvasSize, maxX: 0, maxY: 0 })
+      saveState()
     },
+    undo: () => {
+      undo()
+    },
+    redo: () => {
+      redo()
+    },
+    canUndo: () => historyIndex > 0,
+    canRedo: () => historyIndex < history.length - 1,
     save: () => {
       const canvas = canvasRef.current
       if (!canvas) return
@@ -222,7 +290,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
     resetView: () => {
       setOffset(getInitialOffset())
     }
-  }), [bounds, canvasSize, drawGrid])
+  }), [bounds, canvasSize, drawGrid, saveState, undo, redo, historyIndex, history.length])
 
   const draw = (clientX, clientY, isFirstPoint = false) => {
     const canvas = canvasRef.current
@@ -246,11 +314,18 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
       ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`
     }
 
+    // Determine if we should draw square (buildings) or circle (roads/eraser)
+    const useSquare = currentClass === 'buildings' && currentTool === 'brush'
+
     if (isFirstPoint) {
       // Just draw a single point for the first position
-      ctx.beginPath()
-      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
-      ctx.fill()
+      if (useSquare) {
+        ctx.fillRect(x - brushSize / 2, y - brushSize / 2, brushSize, brushSize)
+      } else {
+        ctx.beginPath()
+        ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2)
+        ctx.fill()
+      }
       updateBounds(x, y)
     } else {
       // Interpolate between last position and current position
@@ -264,9 +339,13 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
         const interpX = lastX + (x - lastX) * t
         const interpY = lastY + (y - lastY) * t
 
-        ctx.beginPath()
-        ctx.arc(interpX, interpY, brushSize / 2, 0, Math.PI * 2)
-        ctx.fill()
+        if (useSquare) {
+          ctx.fillRect(interpX - brushSize / 2, interpY - brushSize / 2, brushSize, brushSize)
+        } else {
+          ctx.beginPath()
+          ctx.arc(interpX, interpY, brushSize / 2, 0, Math.PI * 2)
+          ctx.fill()
+        }
         updateBounds(interpX, interpY)
       }
     }
@@ -318,9 +397,19 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, fillBuildings
           const fillColor = classColors.buildings
           setTimeout(() => {
             floodFill(centerX, centerY, fillColor)
+            saveState()
           }, 50)
+        } else {
+          // No fill, just save the drawing
+          saveState()
         }
+      } else {
+        // Stroke too short for fill
+        saveState()
       }
+    } else if (isDrawing.current) {
+      // Save state after any drawing operation
+      saveState()
     }
 
     isDrawing.current = false

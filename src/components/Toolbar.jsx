@@ -94,7 +94,8 @@ function Toolbar({
             style={{
               width: `${previewSize}px`,
               height: `${previewSize}px`,
-              background: `rgb(${color.r}, ${color.g}, ${color.b})`
+              background: `rgb(${color.r}, ${color.g}, ${color.b})`,
+              borderRadius: currentClass === 'buildings' && currentTool === 'brush' ? '0' : '50%'
             }}
           />
         </div>
