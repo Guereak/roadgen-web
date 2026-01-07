@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segmentation Mask Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e1e1e;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .controls {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .class-btn {
+            background: #444;
+            color: #fff;
+            min-width: 120px;
+        }
+
+        .class-btn.active {
+            box-shadow: 0 0 0 2px #fff;
+        }
+
+        .class-btn.roads {
+            background: #ff0000;
+        }
+
+        .class-btn.buildings {
+            background: #00ff00;
+            color: #000;
+        }
+
+        .action-btn {
+            background: #007acc;
+            color: #fff;
+        }
+
+        .action-btn:hover {
+            background: #005a9e;
+        }
+
+        .danger-btn {
+            background: #d13438;
+            color: #fff;
+        }
+
+        .danger-btn:hover {
+            background: #a82a2e;
+        }
+
+        input[type="range"] {
+            width: 150px;
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+        }
+
+        .canvas-container {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas {
+            border: 2px solid #444;
+            cursor: crosshair;
+            background: #000;
+            display: block;
+        }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2d2d2d;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .info strong {
+            color: #fff;
+        }
+
+        .brush-preview {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brush-preview-inner {
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tool-btn {
+            background: #444;
+            color: #fff;
+            min-width: 80px;
+        }
+
+        .tool-btn.active {
+            background: #007acc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Segmentation Mask Editor</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Class</label>
+                <div class="button-group">
+                    <button class="class-btn roads active" onclick="setClass('roads')">Roads</button>
+                    <button class="class-btn buildings" onclick="setClass('buildings')">Buildings</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Tool</label>
+                <div class="tool-group">
+                    <button class="tool-btn active" onclick="setTool('brush')">Brush</button>
+                    <button class="tool-btn" onclick="setTool('eraser')">Eraser</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Brush Size: <span id="brushSizeLabel">20</span>px</label>
+                <input type="range" id="brushSize" min="1" max="100" value="20" oninput="updateBrushSize(this.value)">
+            </div>
+
+            <div class="control-group">
+                <label>Brush Preview</label>
+                <div class="brush-preview">
+                    <div class="brush-preview-inner" id="brushPreview" style="width: 20px; height: 20px; background: #ff0000;"></div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Canvas Size</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="canvasWidth" value="512" min="64" max="2048" step="64">
+                    <span>×</span>
+                    <input type="number" id="canvasHeight" value="512" min="64" max="2048" step="64">
+                    <button class="action-btn" onclick="resizeCanvas()">Resize</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Actions</label>
+                <div class="button-group">
+                    <button class="action-btn" onclick="saveImage()">Save Mask</button>
+                    <button class="danger-btn" onclick="clearCanvas()">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas" width="512" height="512"></canvas>
+        </div>
+
+        <div class="info">
+            <strong>Instructions:</strong><br>
+            • Select a class (Roads or Buildings) and draw on the canvas<br>
+            • Roads are encoded as red (255, 0, 0), Buildings as green (0, 255, 0)<br>
+            • Use the eraser tool to remove drawn areas<br>
+            • Adjust brush size with the slider<br>
+            • Save the mask as a PNG image with separate color channels for ML processing<br>
+            • Standard patch size: 256×256 with 64px overlap
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        let isDrawing = false;
+        let currentClass = 'roads';
+        let currentTool = 'brush';
+        let brushSize = 20;
+
+        const classColors = {
+            'roads': { r: 255, g: 0, b: 0 },
+            'buildings': { r: 0, g: 255, b: 0 }
+        };
+
+        function initCanvas() {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function setClass(className) {
+            currentClass = className;
+            document.querySelectorAll('.class-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateBrushPreview();
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateBrushPreview();
+        }
+
+        function updateBrushSize(size) {
+            brushSize = parseInt(size);
+            document.getElementById('brushSizeLabel').textContent = brushSize;
+            updateBrushPreview();
+        }
+
+        function updateBrushPreview() {
+            const preview = document.getElementById('brushPreview');
+            preview.style.width = Math.min(brushSize, 40) + 'px';
+            preview.style.height = Math.min(brushSize, 40) + 'px';
+
+            if (currentTool === 'eraser') {
+                preview.style.background = '#000';
+            } else {
+                const color = classColors[currentClass];
+                preview.style.background = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            }
+        }
+
+        function draw(x, y) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const canvasX = (x - rect.left) * scaleX;
+            const canvasY = (y - rect.top) * scaleY;
+
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, brushSize / 2, 0, Math.PI * 2);
+
+            if (currentTool === 'eraser') {
+                ctx.fillStyle = '#000000';
+            } else {
+                const color = classColors[currentClass];
+                ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            }
+
+            ctx.fill();
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            draw(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                draw(e.clientX, e.clientY);
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+        });
+
+        function clearCanvas() {
+            if (confirm('Are you sure you want to clear the canvas?')) {
+                initCanvas();
+            }
+        }
+
+        function resizeCanvas() {
+            const width = parseInt(document.getElementById('canvasWidth').value);
+            const height = parseInt(document.getElementById('canvasHeight').value);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            canvas.width = width;
+            canvas.height = height;
+
+            initCanvas();
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function saveImage() {
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                a.href = url;
+                a.download = `segmentation_mask_${canvas.width}x${canvas.height}_${timestamp}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+        }
+
+        initCanvas();
+    </script>
+</body>
+</html>

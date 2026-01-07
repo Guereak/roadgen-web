@@ -1,0 +1,38 @@
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 400px);
+  min-height: 600px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #0a0a0a;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.drawing-canvas {
+  cursor: crosshair;
+  background: #000;
+  display: block;
+  transform-origin: 0 0;
+  transition: none;
+  image-rendering: pixelated;
+}
+
+.canvas-info {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(28, 28, 30, 0.9);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+}
