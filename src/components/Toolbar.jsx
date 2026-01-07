@@ -1,5 +1,5 @@
 import './Toolbar.css'
-import { LuPencil, LuEraser, LuUndo2, LuRedo2, LuFocus, LuTrash2, LuDownload, LuMoon, LuSun } from 'react-icons/lu'
+import { LuPencil, LuEraser, LuUndo2, LuRedo2, LuFocus, LuTrash2, LuDownload, LuMoon, LuSun, LuUpload } from 'react-icons/lu'
 
 function Toolbar({
   currentClass,
@@ -17,7 +17,9 @@ function Toolbar({
   onRedo,
   onResetView,
   onClear,
-  onSave
+  onSave,
+  onSendToAPI,
+  isUploading
 }) {
   const getCurrentColor = () => {
     if (currentTool === 'eraser') {
@@ -151,6 +153,13 @@ function Toolbar({
       <div className="toolbar-footer">
         <button className="export-btn" onClick={onSave}>
           <LuDownload size={18} /> Export
+        </button>
+        <button
+          className="export-btn upload-btn"
+          onClick={onSendToAPI}
+          disabled={isUploading}
+        >
+          <LuUpload size={18} /> {isUploading ? 'Uploading...' : 'Send to API'}
         </button>
       </div>
     </div>

@@ -12,6 +12,7 @@ function App() {
   })
   const [zoom, setZoom] = useState(1)
   const [theme, setTheme] = useState('light')
+  const [isUploading, setIsUploading] = useState(false)
   const canvasRef = useRef(null)
 
   const classColors = {
@@ -34,6 +35,25 @@ function App() {
 
   const handleSave = () => {
     canvasRef.current?.save()
+  }
+
+  const handleSendToAPI = async () => {
+    if (isUploading) return
+
+    setIsUploading(true)
+    try {
+      const result = await canvasRef.current?.sendToAPI()
+
+      if (result?.success) {
+        alert('Successfully uploaded to API!')
+      } else {
+        alert(`Failed to upload: ${result?.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      alert(`Error uploading: ${error.message}`)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const handleResetView = () => {
@@ -86,6 +106,8 @@ function App() {
         onResetView={handleResetView}
         onClear={handleClear}
         onSave={handleSave}
+        onSendToAPI={handleSendToAPI}
+        isUploading={isUploading}
       />
 
       <Canvas

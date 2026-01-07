@@ -10,7 +10,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
   const lastPos = useRef({ x: 0, y: 0 })
   const lastDrawPos = useRef({ x: 0, y: 0 })
 
-  const CANVAS_SIZE = 8192
+  const CANVAS_SIZE = 4096
   const CENTER_OFFSET = CANVAS_SIZE / 2
 
   // Helper function to get background color based on theme
@@ -148,8 +148,8 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
         const newHistory = prevHistory.slice(0, prev + 1)
         // Add new state
         newHistory.push(imageData)
-        // Limit history to 50 states to prevent memory issues
-        if (newHistory.length > 50) {
+        // Limit history to 10 states to prevent memory issues
+        if (newHistory.length > 10) {
           newHistory.shift()
           return newHistory
         }
@@ -157,7 +157,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
       })
 
       // Adjust index if we hit the limit
-      return Math.min(newIndex, 49)
+      return Math.min(newIndex, 9)
     })
   }, [canvasSize])
 
@@ -247,6 +247,65 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
       }, 'image/png')
+    },
+    sendToAPI: async () => {
+      const canvas = canvasRef.current
+      if (!canvas) return { success: false, error: 'Canvas not found' }
+
+      const { minX, minY, maxX, maxY } = bounds
+
+      if (maxX <= 0 || maxY <= 0) {
+        return { success: false, error: 'Nothing to send! Draw something first.' }
+      }
+
+      const width = Math.max(256, Math.ceil((maxX - minX + 100) / 64) * 64)
+      const height = Math.max(256, Math.ceil((maxY - minY + 100) / 64) * 64)
+
+      const exportCanvas = document.createElement('canvas')
+      exportCanvas.width = width
+      exportCanvas.height = height
+      const exportCtx = exportCanvas.getContext('2d')
+
+      // Fill with current theme background color
+      exportCtx.fillStyle = getBgColor()
+      exportCtx.fillRect(0, 0, width, height)
+
+      const sourceX = Math.max(0, minX - 50)
+      const sourceY = Math.max(0, minY - 50)
+
+      // Draw the transparent canvas content over the background
+      exportCtx.drawImage(
+        canvas,
+        sourceX, sourceY, width, height,
+        0, 0, width, height
+      )
+
+      return new Promise((resolve) => {
+        exportCanvas.toBlob(async (blob) => {
+          try {
+            const formData = new FormData()
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+            const filename = `segmentation_mask_${width}x${height}_${timestamp}.png`
+            formData.append('file', blob, filename)
+            formData.append('width', width)
+            formData.append('height', height)
+
+            const response = await fetch('http://localhost:8000/api/upload', {
+              method: 'POST',
+              body: formData
+            })
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data = await response.json()
+            resolve({ success: true, data })
+          } catch (error) {
+            resolve({ success: false, error: error.message })
+          }
+        }, 'image/png')
+      })
     },
     resetView: () => {
       setOffset(getInitialOffset())
@@ -387,7 +446,7 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
     isPanning.current = false
   }
 
-  const handleWheel = (e) => {
+  const handleWheel = useCallback((e) => {
     e.preventDefault()
 
     // Pan with trackpad scrolling
@@ -395,7 +454,16 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
       x: prev.x - e.deltaX,
       y: prev.y - e.deltaY
     }))
-  }
+  }, [])
+
+  // Add wheel event listener with passive: false
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
 
   return (
     <div ref={containerRef} className="canvas-wrapper" style={{ backgroundColor: getBgColor() }}>
@@ -424,7 +492,6 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       />
     </div>
   )
