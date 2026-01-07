@@ -4,18 +4,34 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* Light theme (default) */
+  --bg-color: #f5f5f7;
+  --text-primary: #1d1d1f;
+  --text-secondary: rgba(0, 0, 0, 0.6);
+  --text-tertiary: rgba(0, 0, 0, 0.4);
+}
+
+.dark {
+  /* Dark theme */
+  --bg-color: #000;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.85);
+  --text-tertiary: rgba(255, 255, 255, 0.5);
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background: linear-gradient(135deg, #1a1a1d 0%, #0d0d0f 100%);
-  color: #fff;
-  padding: 20px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  padding: 0;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease;
 }
 
 #root {
-  max-width: 1600px;
-  margin: 0 auto;
+  width: 100vw;
   height: 100vh;
 }

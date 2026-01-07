@@ -12,6 +12,7 @@ function App() {
   })
   const [fillBuildings, setFillBuildings] = useState(false)
   const [zoom, setZoom] = useState(1)
+  const [theme, setTheme] = useState('light')
   const canvasRef = useRef(null)
 
   const classColors = {
@@ -68,40 +69,26 @@ function App() {
   }, [])
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>Segmentation Mask Editor</h1>
-        <div className="header-actions">
-          <button className="header-btn" onClick={handleUndo} title="Undo (Ctrl+Z)">
-            Undo
-          </button>
-          <button className="header-btn" onClick={handleRedo} title="Redo (Ctrl+Y)">
-            Redo
-          </button>
-          <button className="header-btn" onClick={handleResetView}>
-            Reset View
-          </button>
-          <button className="header-btn" onClick={handleClear}>
-            Clear
-          </button>
-          <button className="header-btn primary" onClick={handleSave}>
-            Export
-          </button>
-        </div>
-      </header>
-
+    <div className={`app ${theme}`}>
       <Toolbar
         currentClass={currentClass}
         currentTool={currentTool}
         brushSize={brushSizes[currentClass]}
         fillBuildings={fillBuildings}
         zoom={zoom}
+        theme={theme}
         classColors={classColors}
         onClassChange={setCurrentClass}
         onToolChange={setCurrentTool}
         onBrushSizeChange={handleBrushSizeChange}
         onFillBuildingsChange={setFillBuildings}
         onZoomChange={setZoom}
+        onThemeChange={setTheme}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onResetView={handleResetView}
+        onClear={handleClear}
+        onSave={handleSave}
       />
 
       <Canvas
@@ -111,6 +98,7 @@ function App() {
         brushSize={brushSizes[currentClass]}
         fillBuildings={fillBuildings}
         zoom={zoom}
+        theme={theme}
         classColors={classColors}
       />
     </div>
