@@ -3,158 +3,17 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-}
-
-/* Image Viewer Overlay */
-.image-viewer-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  animation: fadeIn 0.2s ease-out;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.image-viewer-content {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 90vw;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: slideUp 0.3s ease-out;
-}
-
-.app.dark .image-viewer-content {
-  background: rgba(30, 30, 30, 0.95);
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.image-viewer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.app.dark .image-viewer-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.image-viewer-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #000;
-}
-
-.app.dark .image-viewer-header h3 {
-  color: #fff;
-}
-
-.close-button {
-  background: rgba(0, 0, 0, 0.05);
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 18px;
-  color: #666;
-  transition: all 0.2s ease;
-}
-
-.close-button:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #000;
-  transform: scale(1.05);
-}
-
-.app.dark .close-button {
-  background: rgba(255, 255, 255, 0.1);
-  color: #999;
-}
-
-.app.dark .close-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-}
-
-.image-viewer-body {
-  padding: 24px;
-  overflow: auto;
-  max-height: calc(90vh - 160px);
-}
-
-.image-viewer-body img {
+/* Canvas Container - handles split view */
+.canvas-container {
+  position: relative;
   width: 100%;
-  height: auto;
-  border-radius: 12px;
-  display: block;
+  height: 100%;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.image-viewer-footer {
-  padding: 16px 24px;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.app.dark .image-viewer-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.download-button {
-  background: #007AFF;
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  display: inline-block;
-}
-
-.download-button:hover {
-  background: #0051D5;
-  transform: scale(1.02);
-}
-
-.download-button:active {
-  transform: scale(0.98);
+.canvas-container.split {
+  width: 50%;
 }

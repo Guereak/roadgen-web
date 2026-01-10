@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Canvas from './components/Canvas'
 import Toolbar from './components/Toolbar'
+import ResultsPanel from './components/ResultsPanel'
 import './App.css'
 
 function App() {
@@ -13,8 +14,12 @@ function App() {
   const [zoom, setZoom] = useState(1)
   const [theme, setTheme] = useState('light')
   const [isUploading, setIsUploading] = useState(false)
-  const [generatedImage, setGeneratedImage] = useState(null)
+  const [generationHistory, setGenerationHistory] = useState([])
+  const [currentResult, setCurrentResult] = useState(null)
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const [inputMaskUrl, setInputMaskUrl] = useState(null)
   const canvasRef = useRef(null)
+  const nextIdRef = useRef(1)
 
   const classColors = {
     roads: { r: 255, g: 0, b: 0 },
@@ -46,7 +51,33 @@ function App() {
       const result = await canvasRef.current?.sendToAPI()
 
       if (result?.success) {
-        setGeneratedImage(result.data.imageUrl)
+        // Create a new generation entry
+        const newGeneration = {
+          id: nextIdRef.current++,
+          imageUrl: result.data.imageUrl,
+          blob: result.data.blob,
+          timestamp: new Date().toISOString()
+        }
+
+        // Update history (keep last 5 generations)
+        setGenerationHistory(prev => {
+          const updated = [...prev, newGeneration]
+          return updated.slice(-5)
+        })
+
+        // Set as current result
+        setCurrentResult(newGeneration)
+
+        // Open the results panel
+        setIsPanelOpen(true)
+
+        // Store the input mask URL for comparison
+        // We'll create a blob URL from the canvas
+        const maskBlob = result.data.inputBlob
+        if (maskBlob) {
+          const maskUrl = URL.createObjectURL(maskBlob)
+          setInputMaskUrl(maskUrl)
+        }
       } else {
         alert(`Failed to upload: ${result?.error || 'Unknown error'}`)
       }
@@ -55,6 +86,18 @@ function App() {
     } finally {
       setIsUploading(false)
     }
+  }
+
+  const handleRegenerate = async () => {
+    await handleSendToAPI()
+  }
+
+  const handleSelectHistory = (item) => {
+    setCurrentResult(item)
+  }
+
+  const handleClosePanel = () => {
+    setIsPanelOpen(false)
   }
 
   const handleResetView = () => {
@@ -111,36 +154,28 @@ function App() {
         isUploading={isUploading}
       />
 
-      <Canvas
-        ref={canvasRef}
-        currentClass={currentClass}
-        currentTool={currentTool}
-        brushSize={brushSizes[currentClass]}
-        zoom={zoom}
-        theme={theme}
-        classColors={classColors}
-      />
+      <div className={`canvas-container ${isPanelOpen ? 'split' : ''}`}>
+        <Canvas
+          ref={canvasRef}
+          currentClass={currentClass}
+          currentTool={currentTool}
+          brushSize={brushSizes[currentClass]}
+          zoom={zoom}
+          theme={theme}
+          classColors={classColors}
+        />
+      </div>
 
-      {generatedImage && (
-        <div className="image-viewer-overlay" onClick={() => setGeneratedImage(null)}>
-          <div className="image-viewer-content" onClick={(e) => e.stopPropagation()}>
-            <div className="image-viewer-header">
-              <h3>Generated Road Network</h3>
-              <button className="close-button" onClick={() => setGeneratedImage(null)}>
-                ✕
-              </button>
-            </div>
-            <div className="image-viewer-body">
-              <img src={generatedImage} alt="Generated road network" />
-            </div>
-            <div className="image-viewer-footer">
-              <a href={generatedImage} download="generated_road_network.png" className="download-button">
-                Download
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
+      <ResultsPanel
+        isOpen={isPanelOpen}
+        onClose={handleClosePanel}
+        currentResult={currentResult}
+        history={generationHistory}
+        onSelectHistory={handleSelectHistory}
+        onRegenerate={handleRegenerate}
+        isRegenerating={isUploading}
+        inputMask={inputMaskUrl}
+      />
     </div>
   )
 }

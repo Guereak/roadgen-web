@@ -261,78 +261,92 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
       const width = Math.max(256, Math.ceil((maxX - minX + 100) / 64) * 64)
       const height = Math.max(256, Math.ceil((maxY - minY + 100) / 64) * 64)
 
+      const sourceX = Math.max(0, minX - 50)
+      const sourceY = Math.max(0, minY - 50)
+
+      // Create API version (black background)
       const exportCanvas = document.createElement('canvas')
       exportCanvas.width = width
       exportCanvas.height = height
       const exportCtx = exportCanvas.getContext('2d')
-
-      // Fill with black background (required by API)
       exportCtx.fillStyle = '#000000'
       exportCtx.fillRect(0, 0, width, height)
-
-      const sourceX = Math.max(0, minX - 50)
-      const sourceY = Math.max(0, minY - 50)
-
-      // Draw the transparent canvas content over the background
       exportCtx.drawImage(
         canvas,
         sourceX, sourceY, width, height,
         0, 0, width, height
       )
 
+      // Create visual version (white background for display)
+      const visualCanvas = document.createElement('canvas')
+      visualCanvas.width = width
+      visualCanvas.height = height
+      const visualCtx = visualCanvas.getContext('2d')
+      visualCtx.fillStyle = getBgColor()
+      visualCtx.fillRect(0, 0, width, height)
+      visualCtx.drawImage(
+        canvas,
+        sourceX, sourceY, width, height,
+        0, 0, width, height
+      )
+
       return new Promise((resolve) => {
-        exportCanvas.toBlob(async (blob) => {
-          try {
-            if (!blob) {
-              resolve({ success: false, error: 'Failed to create image blob' })
-              return
+        // First create the visual blob
+        visualCanvas.toBlob(async (visualBlob) => {
+          // Then create the API blob
+          exportCanvas.toBlob(async (inputBlob) => {
+            try {
+              if (!inputBlob || !visualBlob) {
+                resolve({ success: false, error: 'Failed to create image blob' })
+                return
+              }
+
+              console.log('Blob created:', {
+                size: inputBlob.size,
+                type: inputBlob.type,
+                width: width,
+                height: height
+              })
+
+              const formData = new FormData()
+              const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+              const filename = `segmentation_mask_${width}x${height}_${timestamp}.png`
+              formData.append('file', inputBlob, filename)
+
+              console.log('Sending request to API:', {
+                url: 'http://localhost:8000/generate',
+                filename: filename,
+                blobSize: inputBlob.size,
+                blobType: inputBlob.type
+              })
+
+              const response = await fetch('http://localhost:8000/generate', {
+                method: 'POST',
+                body: formData
+              })
+
+              console.log('Response received:', {
+                status: response.status,
+                statusText: response.statusText,
+                contentType: response.headers.get('content-type')
+              })
+
+              if (!response.ok) {
+                const errorText = await response.text()
+                console.error('API Error Response:', errorText)
+                throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`)
+              }
+
+              // Response is an image, not JSON
+              const imageBlob = await response.blob()
+              const imageUrl = URL.createObjectURL(imageBlob)
+
+              resolve({ success: true, data: { imageUrl, blob: imageBlob, inputBlob: visualBlob } })
+            } catch (error) {
+              console.error('API Request Error:', error)
+              resolve({ success: false, error: error.message })
             }
-
-            console.log('Blob created:', {
-              size: blob.size,
-              type: blob.type,
-              width: width,
-              height: height
-            })
-
-            const formData = new FormData()
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
-            const filename = `segmentation_mask_${width}x${height}_${timestamp}.png`
-            formData.append('file', blob, filename)
-
-            console.log('Sending request to API:', {
-              url: 'http://localhost:8000/generate',
-              filename: filename,
-              blobSize: blob.size,
-              blobType: blob.type
-            })
-
-            const response = await fetch('http://localhost:8000/generate', {
-              method: 'POST',
-              body: formData
-            })
-
-            console.log('Response received:', {
-              status: response.status,
-              statusText: response.statusText,
-              contentType: response.headers.get('content-type')
-            })
-
-            if (!response.ok) {
-              const errorText = await response.text()
-              console.error('API Error Response:', errorText)
-              throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`)
-            }
-
-            // Response is an image, not JSON
-            const imageBlob = await response.blob()
-            const imageUrl = URL.createObjectURL(imageBlob)
-
-            resolve({ success: true, data: { imageUrl, blob: imageBlob } })
-          } catch (error) {
-            console.error('API Request Error:', error)
-            resolve({ success: false, error: error.message })
-          }
+          }, 'image/png')
         }, 'image/png')
       })
     },
