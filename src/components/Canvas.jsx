@@ -266,8 +266,8 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
       exportCanvas.height = height
       const exportCtx = exportCanvas.getContext('2d')
 
-      // Fill with current theme background color
-      exportCtx.fillStyle = getBgColor()
+      // Fill with black background (required by API)
+      exportCtx.fillStyle = '#000000'
       exportCtx.fillRect(0, 0, width, height)
 
       const sourceX = Math.max(0, minX - 50)
@@ -283,25 +283,54 @@ const Canvas = forwardRef(({ currentClass, currentTool, brushSize, zoom, theme, 
       return new Promise((resolve) => {
         exportCanvas.toBlob(async (blob) => {
           try {
+            if (!blob) {
+              resolve({ success: false, error: 'Failed to create image blob' })
+              return
+            }
+
+            console.log('Blob created:', {
+              size: blob.size,
+              type: blob.type,
+              width: width,
+              height: height
+            })
+
             const formData = new FormData()
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
             const filename = `segmentation_mask_${width}x${height}_${timestamp}.png`
             formData.append('file', blob, filename)
-            formData.append('width', width)
-            formData.append('height', height)
 
-            const response = await fetch('http://localhost:8000/api/upload', {
+            console.log('Sending request to API:', {
+              url: 'http://localhost:8000/generate',
+              filename: filename,
+              blobSize: blob.size,
+              blobType: blob.type
+            })
+
+            const response = await fetch('http://localhost:8000/generate', {
               method: 'POST',
               body: formData
             })
 
+            console.log('Response received:', {
+              status: response.status,
+              statusText: response.statusText,
+              contentType: response.headers.get('content-type')
+            })
+
             if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`)
+              const errorText = await response.text()
+              console.error('API Error Response:', errorText)
+              throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`)
             }
 
-            const data = await response.json()
-            resolve({ success: true, data })
+            // Response is an image, not JSON
+            const imageBlob = await response.blob()
+            const imageUrl = URL.createObjectURL(imageBlob)
+
+            resolve({ success: true, data: { imageUrl, blob: imageBlob } })
           } catch (error) {
+            console.error('API Request Error:', error)
             resolve({ success: false, error: error.message })
           }
         }, 'image/png')

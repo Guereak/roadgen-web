@@ -13,6 +13,7 @@ function App() {
   const [zoom, setZoom] = useState(1)
   const [theme, setTheme] = useState('light')
   const [isUploading, setIsUploading] = useState(false)
+  const [generatedImage, setGeneratedImage] = useState(null)
   const canvasRef = useRef(null)
 
   const classColors = {
@@ -45,7 +46,7 @@ function App() {
       const result = await canvasRef.current?.sendToAPI()
 
       if (result?.success) {
-        alert('Successfully uploaded to API!')
+        setGeneratedImage(result.data.imageUrl)
       } else {
         alert(`Failed to upload: ${result?.error || 'Unknown error'}`)
       }
@@ -119,6 +120,27 @@ function App() {
         theme={theme}
         classColors={classColors}
       />
+
+      {generatedImage && (
+        <div className="image-viewer-overlay" onClick={() => setGeneratedImage(null)}>
+          <div className="image-viewer-content" onClick={(e) => e.stopPropagation()}>
+            <div className="image-viewer-header">
+              <h3>Generated Road Network</h3>
+              <button className="close-button" onClick={() => setGeneratedImage(null)}>
+                ✕
+              </button>
+            </div>
+            <div className="image-viewer-body">
+              <img src={generatedImage} alt="Generated road network" />
+            </div>
+            <div className="image-viewer-footer">
+              <a href={generatedImage} download="generated_road_network.png" className="download-button">
+                Download
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
