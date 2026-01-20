@@ -2,7 +2,7 @@
 
 A beautiful, Apple-inspired React web application for creating segmentation masks for ML training. Features an infinite canvas with pan and zoom, drawing masks with separate color channels for roads (red) and buildings (green).
 
-**This project is just a simple frontend built to work alongside (SatGen-CV)[https://github.com/Guereak/SatGen-CV]. If you want to try it out, make sure you have SatGen-CV up and running alongisde it.**
+**This project is just a simple frontend built to work alongside [SatGen-CV](https://github.com/Guereak/SatGen-CV). If you want to try it out, make sure you have SatGen-CV up and running alongisde it.**
 
 ![SatGen Illustration](satgen-illustration.png)
 
